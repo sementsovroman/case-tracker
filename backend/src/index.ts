@@ -21,11 +21,11 @@ app.get("/health", async () => ({ ok: true }));
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// backend/dist/index.js -> backend/dist -> backend -> ../frontend/dist
-const frontendDist = path.resolve(__dirname, "../../frontend/dist");
+// backend/dist/index.js -> backend/dist -> backend
+const publicDir = path.resolve(__dirname, "../public");
 
 await app.register(fastifyStatic, {
-  root: frontendDist,
+  root: publicDir,
 });
 
 // SPA fallback:
