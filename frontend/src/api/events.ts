@@ -1,13 +1,8 @@
 import { CalendarEvent } from "../types";
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:3001";
-
 export async function fetchEvents(fromISO: string, toISO: string): Promise<CalendarEvent[]> {
-  const url = new URL(`/events`);
-  url.searchParams.set("from", fromISO);
-  url.searchParams.set("to", toISO);
-
-  const res = await fetch(url.toString());
+  const params = new URLSearchParams({ from: fromISO, to: toISO });
+  const res = await fetch(`/events?${params.toString()}`);
   if (!res.ok) throw new Error(`Failed to fetch events: ${res.status}`);
   return res.json();
 }
