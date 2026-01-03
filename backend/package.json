@@ -13,6 +13,7 @@
     "@fastify/cors": "^9.0.0",
     "@fastify/static": "^9.0.0",
     "@prisma/client": "^5.0.0",
+    "@types/node": "^25.0.3",
     "fastify": "^4.28.1",
     "zod": "^3.23.8"
   },
