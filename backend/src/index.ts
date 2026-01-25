@@ -5,6 +5,7 @@ import { eventsRoutes } from "./routes/events.js";
 import fastifyStatic from "@fastify/static";
 import { fileURLToPath } from "url";
 import path from "path";
+import fs from "fs";
 
 const app = Fastify({ logger: true });
 
@@ -23,20 +24,25 @@ const __dirname = path.dirname(__filename);
 
 // backend/dist/index.js -> backend/dist -> backend
 const publicDir = path.resolve(__dirname, "../public");
+const hasPublicDir = fs.existsSync(publicDir);
 
-await app.register(fastifyStatic, {
-  root: publicDir,
-});
+if (hasPublicDir) {
+  await app.register(fastifyStatic, {
+    root: publicDir,
+  });
 
-// SPA fallback:
-app.setNotFoundHandler((req, reply) => {
-  // API 404 как JSON:
-  if (req.url.startsWith("/events") || req.url.startsWith("/health")) {
-    return reply.code(404).send({ error: "NOT_FOUND" });
-  }
-  // Frontend fallback:
-  return reply.sendFile("index.html");
-});
+  // SPA fallback:
+  app.setNotFoundHandler((req, reply) => {
+    // API 404 как JSON:
+    if (req.url.startsWith("/events") || req.url.startsWith("/health")) {
+      return reply.code(404).send({ error: "NOT_FOUND" });
+    }
+    // Frontend fallback:
+    return reply.sendFile("index.html");
+  });
+} else {
+  app.log.info("Static frontend not found, skipping static serve.");
+}
 // --- end serve frontend build ---
 
 const PORT = Number(process.env.PORT ?? 3001);
