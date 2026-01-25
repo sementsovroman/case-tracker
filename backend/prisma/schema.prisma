@@ -7,22 +7,36 @@ datasource db {
   url      = "file:./dev.db"
 }
 
-model Event {
+model Case {
   id          String   @id @default(cuid())
   title       String
   description String
-  start       DateTime
-  end         DateTime
+  court       String
+  judge       String
+  plaintiff   String
+  defendant   String
   color       String   @default("#3b82f6")
+  notes       String
+  archived    Boolean  @default(false)
 
-  // future fields
-  timezone    String?
-  location    String?
-  isPublic    Boolean?
-  meta        String?  // JSON string for SQLite; switch to Json with Postgres
+  hearings    Hearing[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Hearing {
+  id        String      @id @default(cuid())
+  caseId    String
+  kind      String      @default("hearing")
+  start     DateTime
+  end       DateTime
+
+  case      Case        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
   @@index([start, end])
+  @@index([caseId])
 }

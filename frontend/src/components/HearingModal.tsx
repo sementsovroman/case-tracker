@@ -1,37 +1,36 @@
 import React, { useMemo, useState } from "react";
-import { CalendarEvent } from "../types";
+import { Case, Hearing, HearingKind } from "../types";
 
 type Props = {
   open: boolean;
   mode: "create" | "edit";
-  initial: Partial<CalendarEvent>;
+  initial: Partial<Hearing>;
+  cases: Case[];
   onClose: () => void;
-  onSave: (data: Omit<CalendarEvent, "id">) => Promise<void>;
+  onSave: (data: Omit<Hearing, "id">) => Promise<void>;
   onDelete?: () => Promise<void>;
 };
 
-export function EventModal({ open, mode, initial, onClose, onSave, onDelete }: Props) {
-  const [title, setTitle] = useState(initial.title ?? "");
-  const [description, setDescription] = useState(initial.description ?? "");
+export function HearingModal({ open, mode, initial, cases, onClose, onSave, onDelete }: Props) {
+  const [caseId, setCaseId] = useState(initial.caseId ?? "");
+  const [kind, setKind] = useState<HearingKind>(initial.kind ?? "hearing");
   const [start, setStart] = useState(toLocalInput(initial.start));
   const [end, setEnd] = useState(toLocalInput(initial.end));
-  const [color, setColor] = useState(initial.color ?? "#3b82f6");
   const [busy, setBusy] = useState(false);
 
   React.useEffect(() => {
     if (!open) return;
-    setTitle(initial.title ?? "");
-    setDescription(initial.description ?? "");
+    setCaseId(initial.caseId ?? cases[0]?.id ?? "");
+    setKind(initial.kind ?? "hearing");
     setStart(toLocalInput(initial.start));
     setEnd(toLocalInput(initial.end));
-    setColor(initial.color ?? "#3b82f6");
-  }, [open, initial]);
+  }, [open, initial, cases]);
 
   const valid = useMemo(() => {
-    if (!title.trim()) return false;
+    if (!caseId) return false;
     if (!start || !end) return false;
     return new Date(fromLocalInput(start)).getTime() < new Date(fromLocalInput(end)).getTime();
-  }, [title, start, end]);
+  }, [caseId, start, end]);
 
   if (!open) return null;
 
@@ -42,20 +41,32 @@ export function EventModal({ open, mode, initial, onClose, onSave, onDelete }: P
       <div className="modal">
         <div className="modal-head">
           <div>
-            <h3 className="modal-title">{mode === "create" ? "Создать событие" : "Редактировать событие"}</h3>
-            <p className="modal-sub">Клик по событию — просмотр/редактирование • выделение диапазона — создание</p>
+            <h3 className="modal-title">{mode === "create" ? "Новое заседание" : "Редактировать заседание"}</h3>
+            <p className="modal-sub">Выбери дело и тип события</p>
           </div>
-          <button className="icon-btn" onClick={onClose} disabled={busy} title="Закрыть">✕</button>
+          <button className="icon-btn" onClick={onClose} disabled={busy} title="Закрыть">
+            ✕
+          </button>
         </div>
 
         <label className="field">
-          Название
-          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Например: Встреча" />
+          Дело
+          <select className="input" value={caseId} onChange={(e) => setCaseId(e.target.value)}>
+            {!cases.length && <option value="">Сначала создайте дело</option>}
+            {cases.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.title}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label className="field">
-          Описание
-          <textarea className="textarea" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Текст заметки / детали" />
+          Тип события
+          <select className="input" value={kind} onChange={(e) => setKind(e.target.value as HearingKind)}>
+            <option value="hearing">Заседание</option>
+            <option value="meeting">Встреча</option>
+          </select>
         </label>
 
         <div className="grid2">
@@ -68,11 +79,6 @@ export function EventModal({ open, mode, initial, onClose, onSave, onDelete }: P
             <input className="input" type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} />
           </label>
         </div>
-
-        <label className="field">
-          Цвет
-          <input type="color" value={color} onChange={(e) => setColor(e.target.value)} style={{ height: 42, width: 72, borderRadius: 12, border: "1px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.06)" }} />
-        </label>
 
         <div className="actions">
           {canDelete ? (
@@ -103,11 +109,10 @@ export function EventModal({ open, mode, initial, onClose, onSave, onDelete }: P
               setBusy(true);
               try {
                 await onSave({
-                  title: title.trim(),
-                  description,
+                  caseId,
+                  kind,
                   start: fromLocalInput(start),
                   end: fromLocalInput(end),
-                  color,
                 });
                 onClose();
               } finally {
@@ -121,9 +126,9 @@ export function EventModal({ open, mode, initial, onClose, onSave, onDelete }: P
         </div>
 
         {!valid ? (
-          <div className="error">Проверь: название, start/end, и что start &lt; end.</div>
+          <div className="error">Проверь: выбрано дело, start/end, и что start &lt; end.</div>
         ) : (
-          <div className="hint">Можно двигать/растягивать события прямо в календаре (drag &amp; resize).</div>
+          <div className="hint">Название в календаре формируется как «дело — тип».</div>
         )}
       </div>
     </div>

@@ -5,39 +5,64 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { DateSelectArg, DatesSetArg, EventClickArg, EventDropArg, EventResizeDoneArg } from "@fullcalendar/core";
 
-import { CalendarEvent } from "../types";
-import { createEvent, deleteEvent, fetchEvents, updateEvent } from "../api/events";
-import { EventModal } from "./EventModal";
+import { Case, Hearing, HearingKind } from "../types";
+import { createCase, fetchCases } from "../api/cases";
+import { createHearing, deleteHearing, fetchHearings, updateHearing } from "../api/hearings";
+import { CaseModal } from "./CaseModal";
+import { HearingDetailsModal } from "./HearingDetailsModal";
+import { HearingModal } from "./HearingModal";
+import { CasesListModal } from "./CasesListModal";
+import { TopNav } from "./TopNav";
 
 export function CalendarView() {
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
-  const [activeEvent, setActiveEvent] = useState<Partial<CalendarEvent>>({});
+  const [cases, setCases] = useState<Case[]>([]);
+  const [hearings, setHearings] = useState<Hearing[]>([]);
+  const [hearingModalOpen, setHearingModalOpen] = useState(false);
+  const [hearingModalMode, setHearingModalMode] = useState<"create" | "edit">("create");
+  const [activeHearing, setActiveHearing] = useState<Partial<Hearing>>({});
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsHearing, setDetailsHearing] = useState<Hearing | null>(null);
+  const [caseModalOpen, setCaseModalOpen] = useState(false);
+  const [casesListOpen, setCasesListOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const caseMap = useMemo(() => new Map(cases.map((item) => [item.id, item])), [cases]);
 
   const fcEvents = useMemo(
     () =>
-      events.map((e) => ({
-        id: e.id,
-        title: e.title,
-        start: e.start,
-        end: e.end,
-        backgroundColor: e.color,
-        borderColor: e.color,
-        extendedProps: { description: e.description, color: e.color },
-      })),
-    [events]
+      hearings.map((h) => {
+        const caseItem = caseMap.get(h.caseId) ?? h.case ?? null;
+        return {
+          id: h.id,
+          title: `${caseItem?.title ?? "Дело"} — ${kindLabel(h.kind)}`,
+          start: h.start,
+          end: h.end,
+          backgroundColor: caseItem?.color ?? "#60a5fa",
+          borderColor: caseItem?.color ?? "#60a5fa",
+          extendedProps: {
+            caseTitle: caseItem?.title,
+            caseDescription: caseItem?.description,
+            kind: h.kind,
+            color: caseItem?.color ?? "#60a5fa",
+          },
+        };
+      }),
+    [hearings, caseMap]
   );
 
   async function reload(fromISO: string, toISO: string) {
     setLoading(true);
     try {
-      const data = await fetchEvents(fromISO, toISO);
-      setEvents(data);
+      const data = await fetchHearings(fromISO, toISO);
+      setHearings(data);
     } finally {
       setLoading(false);
     }
+  }
+
+  async function loadCases() {
+    const data = await fetchCases();
+    setCases(data);
   }
 
   return (
@@ -46,12 +71,21 @@ export function CalendarView() {
         <div className="brand">
           <span className="brand-dot" />
           <div>
-            <h1>Календарь-органайзер (прототип)</h1>
-            <p>Day / Week / Month • CRUD событий • общий сервер</p>
+            <h1>Календарь судебных дел</h1>
+            <p>Day / Week / Month • заседания в календаре</p>
           </div>
         </div>
-        <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12 }}>
-          {loading ? "Загрузка…" : "Готово"}
+        <div className="topbar-actions">
+          <TopNav />
+          <button className="btn btn-primary" onClick={() => setCaseModalOpen(true)}>
+            Завести дело
+          </button>
+          <button className="btn" onClick={() => setCasesListOpen(true)}>
+            Список дел
+          </button>
+          <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12 }}>
+            {loading ? "Загрузка…" : "Готово"}
+          </div>
         </div>
       </div>
 
@@ -75,87 +109,117 @@ export function CalendarView() {
           expandRows
           events={fcEvents}
           datesSet={async (arg: DatesSetArg) => {
+            await loadCases();
             await reload(arg.start.toISOString(), arg.end.toISOString());
           }}
           select={(arg: DateSelectArg) => {
-            setModalMode("create");
-            setActiveEvent({
-              title: "",
-              description: "",
+            setHearingModalMode("create");
+            setActiveHearing({
+              caseId: cases[0]?.id ?? "",
+              kind: "hearing",
               start: arg.start.toISOString(),
               end: arg.end.toISOString(),
-              color: "#60a5fa",
             });
-            setModalOpen(true);
+            setHearingModalOpen(true);
           }}
           eventClick={(arg: EventClickArg) => {
             const id = arg.event.id;
-            const found = events.find((e) => e.id === id);
+            const found = hearings.find((h) => h.id === id);
             if (!found) return;
-            setModalMode("edit");
-            setActiveEvent(found);
-            setModalOpen(true);
+            setDetailsHearing(found);
+            setDetailsOpen(true);
           }}
           eventDrop={async (arg: EventDropArg) => {
             const id = arg.event.id;
-            const found = events.find((e) => e.id === id);
+            const found = hearings.find((h) => h.id === id);
             if (!found) return;
 
-            const next: Omit<CalendarEvent, "id"> = {
-              title: found.title,
-              description: found.description,
+            const next: Omit<Hearing, "id"> = {
+              caseId: found.caseId,
+              kind: found.kind,
               start: arg.event.start?.toISOString() ?? found.start,
               end: arg.event.end?.toISOString() ?? found.end,
-              color: found.color,
             };
 
-            const updated = await updateEvent(id, next);
-            setEvents((prev) => prev.map((e) => (e.id === id ? updated : e)));
+            const updated = await updateHearing(id, next);
+            setHearings((prev) => prev.map((h) => (h.id === id ? updated : h)));
           }}
           eventResize={async (arg: EventResizeDoneArg) => {
             const id = arg.event.id;
-            const found = events.find((e) => e.id === id);
+            const found = hearings.find((h) => h.id === id);
             if (!found) return;
 
-            const next: Omit<CalendarEvent, "id"> = {
-              title: found.title,
-              description: found.description,
+            const next: Omit<Hearing, "id"> = {
+              caseId: found.caseId,
+              kind: found.kind,
               start: arg.event.start?.toISOString() ?? found.start,
               end: arg.event.end?.toISOString() ?? found.end,
-              color: found.color,
             };
 
-            const updated = await updateEvent(id, next);
-            setEvents((prev) => prev.map((e) => (e.id === id ? updated : e)));
+            const updated = await updateHearing(id, next);
+            setHearings((prev) => prev.map((h) => (h.id === id ? updated : h)));
           }}
         />
       </div>
 
-      <EventModal
-        open={modalOpen}
-        mode={modalMode}
-        initial={activeEvent}
-        onClose={() => setModalOpen(false)}
+      <CaseModal
+        open={caseModalOpen}
+        onClose={() => setCaseModalOpen(false)}
         onSave={async (payload) => {
-          if (modalMode === "create") {
-            const created = await createEvent(payload);
-            setEvents((prev) => [created, ...prev]);
+          const created = await createCase(payload);
+          setCases((prev) => [created, ...prev]);
+        }}
+      />
+
+      <CasesListModal open={casesListOpen} onClose={() => setCasesListOpen(false)} cases={cases} />
+
+      <HearingDetailsModal
+        open={detailsOpen}
+        hearing={detailsHearing}
+        caseItem={detailsHearing ? caseMap.get(detailsHearing.caseId) ?? detailsHearing.case ?? null : null}
+        onClose={() => setDetailsOpen(false)}
+        onEdit={
+          detailsHearing
+            ? () => {
+                setDetailsOpen(false);
+                setHearingModalMode("edit");
+                setActiveHearing(detailsHearing);
+                setHearingModalOpen(true);
+              }
+            : undefined
+        }
+      />
+
+      <HearingModal
+        open={hearingModalOpen}
+        mode={hearingModalMode}
+        initial={activeHearing}
+        cases={cases}
+        onClose={() => setHearingModalOpen(false)}
+        onSave={async (payload) => {
+          if (hearingModalMode === "create") {
+            const created = await createHearing(payload);
+            setHearings((prev) => [created, ...prev]);
           } else {
-            const id = activeEvent.id!;
-            const updated = await updateEvent(id, payload);
-            setEvents((prev) => prev.map((e) => (e.id === id ? updated : e)));
+            const id = activeHearing.id!;
+            const updated = await updateHearing(id, payload);
+            setHearings((prev) => prev.map((h) => (h.id === id ? updated : h)));
           }
         }}
         onDelete={
-          modalMode === "edit"
+          hearingModalMode === "edit"
             ? async () => {
-                const id = activeEvent.id!;
-                await deleteEvent(id);
-                setEvents((prev) => prev.filter((e) => e.id !== id));
+                const id = activeHearing.id!;
+                await deleteHearing(id);
+                setHearings((prev) => prev.filter((h) => h.id !== id));
               }
             : undefined
         }
       />
     </div>
   );
+}
+
+function kindLabel(kind: HearingKind) {
+  return kind === "meeting" ? "Встреча" : "Заседание";
 }

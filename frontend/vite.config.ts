@@ -6,7 +6,11 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/events": {
+      "/cases": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+      "/hearings": {
         target: "http://localhost:3001",
         changeOrigin: true,
       },

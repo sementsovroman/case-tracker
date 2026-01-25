@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
-import { eventsRoutes } from "./routes/events.js";
+import { casesRoutes } from "./routes/cases.js";
+import { hearingsRoutes } from "./routes/hearings.js";
 
 import fastifyStatic from "@fastify/static";
 import { fileURLToPath } from "url";
@@ -14,7 +15,8 @@ await app.register(cors, {
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 });
 
-await app.register(eventsRoutes, { prefix: "/events" });
+await app.register(casesRoutes, { prefix: "/cases" });
+await app.register(hearingsRoutes, { prefix: "/hearings" });
 
 app.get("/health", async () => ({ ok: true }));
 
@@ -34,7 +36,11 @@ if (hasPublicDir) {
   // SPA fallback:
   app.setNotFoundHandler((req, reply) => {
     // API 404 как JSON:
-    if (req.url.startsWith("/events") || req.url.startsWith("/health")) {
+    if (
+      req.url.startsWith("/cases") ||
+      req.url.startsWith("/hearings") ||
+      req.url.startsWith("/health")
+    ) {
       return reply.code(404).send({ error: "NOT_FOUND" });
     }
     // Frontend fallback:
