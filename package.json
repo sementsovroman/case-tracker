@@ -10,6 +10,7 @@
     "dev:backend": "npm run dev --workspace backend",
     "dev:frontend": "npm run dev --workspace frontend",
     "build": "npm run build --workspace backend && npm run build --workspace frontend",
-    "build:railway": "npm run build --workspace frontend && rm -rf backend/public && mkdir -p backend/public && cp -R frontend/dist/* backend/public/ && npm run build --workspace backend && npx prisma generate --schema backend/prisma/schema.prisma"
+    "build:railway": "npm run build --workspace frontend && rm -rf backend/public && mkdir -p backend/public && cp -R frontend/dist/* backend/public/ && npm run build --workspace backend && npx prisma generate --schema backend/prisma/schema.prisma",
+    "migrate:railway": "npx prisma migrate deploy --schema backend/prisma/schema.prisma"
   }
 }
