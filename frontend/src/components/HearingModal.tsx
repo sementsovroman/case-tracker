@@ -72,11 +72,23 @@ export function HearingModal({ open, mode, initial, cases, onClose, onSave, onDe
         <div className="grid2">
           <label className="field">
             Начало
-            <input className="input" type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
+            <input
+              className="input"
+              type="datetime-local"
+              step={300}
+              value={start}
+              onChange={(e) => setStart(e.target.value)}
+            />
           </label>
           <label className="field">
             Конец
-            <input className="input" type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} />
+            <input
+              className="input"
+              type="datetime-local"
+              step={300}
+              value={end}
+              onChange={(e) => setEnd(e.target.value)}
+            />
           </label>
         </div>
 
