@@ -211,7 +211,12 @@ export function HomePage() {
         }}
       />
 
-      <CasesListModal open={casesListOpen} onClose={() => setCasesListOpen(false)} cases={cases} />
+      <CasesListModal
+        open={casesListOpen}
+        onClose={() => setCasesListOpen(false)}
+        cases={cases}
+        onUpdate={(updated) => setCases((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))}
+      />
 
       <HearingModal
         open={hearingModalOpen}

@@ -1,12 +1,19 @@
+import { useState } from "react";
+import { updateCase } from "../api/cases";
 import { Case } from "../types";
+import { CaseDetailsModal } from "./CaseDetailsModal";
 
 type Props = {
   open: boolean;
   cases: Case[];
   onClose: () => void;
+  onUpdate: (updated: Case) => void;
 };
 
-export function CasesListModal({ open, cases, onClose }: Props) {
+export function CasesListModal({ open, cases, onClose, onUpdate }: Props) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [activeCase, setActiveCase] = useState<Case | null>(null);
+
   if (!open) return null;
 
   return (
@@ -28,9 +35,21 @@ export function CasesListModal({ open, cases, onClose }: Props) {
           ) : (
             cases.map((c) => (
               <div className="list-item" key={c.id}>
-                <div className="list-title">
-                  <span className="color-dot" style={{ background: c.color }} />
-                  {c.title}
+                <div className="list-row">
+                  <div className="list-title">
+                    <span className="color-dot" style={{ background: c.color }} />
+                    {c.title}
+                  </div>
+                  <button
+                    className="icon-btn icon-btn-sm"
+                    title="Открыть дело"
+                    onClick={() => {
+                      setActiveCase(c);
+                      setDetailsOpen(true);
+                    }}
+                  >
+                    ✎
+                  </button>
                 </div>
                 <div className="list-sub">{c.description || "Без описания"}</div>
               </div>
@@ -38,6 +57,17 @@ export function CasesListModal({ open, cases, onClose }: Props) {
           )}
         </div>
       </div>
+
+      <CaseDetailsModal
+        open={detailsOpen}
+        initial={activeCase}
+        onClose={() => setDetailsOpen(false)}
+        onSave={async (payload) => {
+          if (!activeCase) return;
+          const updated = await updateCase(activeCase.id, payload);
+          onUpdate(updated);
+        }}
+      />
     </div>
   );
 }
